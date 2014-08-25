@@ -1,0 +1,54 @@
+package com.itheima.mobilesafe;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.os.Bundle;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+public class EnterPwdActivity extends Activity {
+	private ImageView iv_icon;
+	private TextView tv_name;
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_enter_pwd);
+		iv_icon = (ImageView) findViewById(R.id.iv_icon);
+		tv_name = (TextView) findViewById(R.id.tv_name);
+		Intent intent = getIntent();
+		String packname = intent.getStringExtra("packname");
+		
+		try {
+			PackageManager pm = getPackageManager();
+			iv_icon.setImageDrawable(pm.getPackageInfo(packname, 0).applicationInfo.loadIcon(pm));
+			tv_name.setText(pm.getPackageInfo(packname, 0).applicationInfo.loadLabel(pm));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	@Override
+	public void onBackPressed() {
+		//直接 回桌面。
+//        <action android:name="android.intent.action.MAIN" />
+//        <category android:name="android.intent.category.HOME" />
+//        <category android:name="android.intent.category.DEFAULT" />
+//        <category android:name="android.intent.category.MONKEY"/>
+		Intent intent = new Intent();
+		intent.setAction("android.intent.action.MAIN");
+		intent.addCategory("android.intent.category.HOME");
+		intent.addCategory("android.intent.category.DEFAULT");
+		intent.addCategory("android.intent.category.MONKEY");
+		startActivity(intent);
+	}
+	
+	//只要输入密码的界面用户不可见 就需要把他给关闭掉。
+	@Override
+	protected void onStop() {
+		finish();
+		super.onStop();
+	}
+}

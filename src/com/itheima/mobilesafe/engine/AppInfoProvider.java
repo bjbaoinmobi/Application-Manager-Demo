@@ -1,0 +1,62 @@
+package com.itheima.mobilesafe.engine;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
+
+import com.itheima.mobilesafe.domain.AppInfo;
+
+public class AppInfoProvider {
+
+	/**
+	 * 得到手机里安装的系统应用和用户安装的应用的信息
+	 * @param context
+	 * @return
+	 */
+	public static List<AppInfo> getAllAppInfos(Context context) {
+		List<AppInfo>  appInfos = new ArrayList<AppInfo>();
+		// 得到包管理器
+		PackageManager pm = context.getPackageManager();
+		List<PackageInfo> packInfos = pm.getInstalledPackages(0);
+		for(PackageInfo info : packInfos){
+			//某一个APK的信息
+			AppInfo appInfo = new AppInfo();
+			String packageName = info.packageName;
+			Drawable icon = info.applicationInfo.loadIcon(pm);
+			String name = info.applicationInfo.loadLabel(pm).toString();
+			int uid = info.applicationInfo.uid;
+			appInfo.setIcon(icon);
+			appInfo.setName(name+uid);
+			appInfo.setPackageName(packageName);
+			//应用程序的标志，可以是任意标志的组合
+			int flags = info.applicationInfo.flags;//应用程序交的答题卡
+			
+			if((flags & ApplicationInfo.FLAG_SYSTEM) ==0){
+				//用户程序
+				appInfo.setUser(true);
+			}else{
+				//系统程序
+				appInfo.setUser(false);
+			}
+			
+			if((flags & ApplicationInfo.FLAG_EXTERNAL_STORAGE) ==0){
+				//手机内部存储空间
+				appInfo.setRom(true);
+			}else{
+				//外部存储空间
+				appInfo.setRom(false);
+			}
+			
+			appInfos.add(appInfo);
+			
+		}
+		return appInfos;
+
+	}
+
+}

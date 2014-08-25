@@ -1,0 +1,126 @@
+package com.itheima.mobilesafe;
+
+import java.lang.reflect.Method;
+import java.util.List;
+
+import android.app.Activity;
+import android.content.pm.IPackageStatsObserver;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.PackageStats;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.os.RemoteException;
+import android.text.format.Formatter;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+
+public class CleanCacheActivity extends Activity {
+	protected static final int SCANING = 1;
+	protected static final int FINFISH = 2;
+	private static final int ADD_CACHE_INFO = 3;
+	private TextView tv_scan_status;
+	private ProgressBar pb;
+	private PackageManager pm ;
+	private LinearLayout ll_container;
+	
+	private Handler hanlder = new Handler(){
+		public void handleMessage(android.os.Message msg) {
+			switch (msg.what) {
+			case SCANING:
+				PackageInfo info = (PackageInfo) msg.obj;
+				tv_scan_status.setText("正在扫描："+info.applicationInfo.loadLabel(pm));
+				break;
+			case FINFISH:
+				tv_scan_status.setText("扫描完毕");
+				break;
+			case ADD_CACHE_INFO:
+				String text = (String) msg.obj;
+				TextView tv = new TextView(getApplicationContext());
+				tv.setText(text);
+				tv.setTextColor(Color.BLACK);
+				ll_container.addView(tv,0);
+				break;
+			}
+		};
+	};
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_clean_cache);
+		tv_scan_status = (TextView) findViewById(R.id.tv_scan_status);
+		ll_container = (LinearLayout) findViewById(R.id.ll_container);
+		pb = (ProgressBar) findViewById(R.id.progressBar1);
+		// 扫描每个应用程序的缓存信息。
+		scanCache();
+	}
+
+	private void scanCache() {
+		new Thread() {
+			public void run() {
+				pm = getPackageManager();
+				List<PackageInfo> infos = pm.getInstalledPackages(0);
+				pb.setMax(infos.size());
+				int total = 0;
+				for (PackageInfo info : infos) {
+					String packname = info.packageName;
+					total++;
+					pb.setProgress(total);
+					try {
+						Method method = PackageManager.class.getMethod(
+								"getPackageSizeInfo", String.class,
+								IPackageStatsObserver.class);
+						method.invoke(pm, packname, new MyObserver());
+						Message msg = Message.obtain();
+						msg.what = SCANING;
+						msg.obj = info;
+						hanlder.sendMessage(msg);
+						Thread.sleep(50);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				
+				Message msg = Message.obtain();
+				msg.what = FINFISH;
+				hanlder.sendMessage(msg);
+			};
+		}.start();
+	}
+
+	private class MyObserver extends IPackageStatsObserver.Stub {
+		
+
+		//下面的代码是在另外一个子线程里面执行的，所以不能直接更新ui
+		@Override
+		public void onGetStatsCompleted(PackageStats pStats, boolean succeeded)
+				throws RemoteException {
+			long cachesize = pStats.cacheSize;
+			if (cachesize > 0) {
+				try {
+//					TextView tv = new TextView(getApplicationContext());
+//					tv.setText("缓存大小："
+//							+ Formatter.formatFileSize(getApplicationContext(),
+//									cachesize)+"---"+pm.getApplicationInfo(pStats.packageName, 0).loadLabel(pm));
+//					tv.setTextColor(Color.BLACK);
+//					ll_container.addView(tv,0);
+					Message msg = Message.obtain();
+					msg.what = ADD_CACHE_INFO;
+					String text = "缓存大小："
+							+ Formatter.formatFileSize(getApplicationContext(),
+							cachesize)+"---"+pm.getApplicationInfo(pStats.packageName, 0).loadLabel(pm);
+					msg.obj = text;
+					hanlder.sendMessage(msg);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+}
